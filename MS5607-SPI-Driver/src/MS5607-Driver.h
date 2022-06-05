@@ -6,12 +6,11 @@
  *  This sensor uses SPI to communicate, 3 pins are required to interface.
  * 
  *  By: Jonic Mecija
+ *  Date: 6/4/22
  */
-
 
 #include <SPI.h>
 #include <Arduino.h>
-
 
 /* SPI Settings / Pins */
 #define SPI_RATE 20000000
@@ -19,6 +18,7 @@
 
 /* MS5607 Commands */
 #define RESET_COMMAND 0x1E
+#define ADC_COMMAND 0x00
 
 /* Registers available on MS5607 */
 enum : const uint8_t{
@@ -29,9 +29,6 @@ enum : const uint8_t{
     C5_ADDR = 0xAA,
     C6_ADDR = 0xAC,
 };
-
-
-
 
 /* Struct to hold calibration data. */
 typedef struct {
@@ -56,57 +53,47 @@ typedef struct {
 
 class MS5607{
     private:
-        MS5607_calib_data MS5607_calib;
-        
-        
+        MS5607_calib_data MS5607_calib;        
+        uint8_t osrTemp; /** Temperature over-sampling ratio */
+        uint8_t osrPressure; /** Pressure over-sampling ratio */
    
     public:
         
         /* Over Sampling Ratio for D1 (Temperature) */
         enum TEMP_SAMPLING_RATES{
-            TEMP_SAMPLING_256 = 0x40,
+            /** 256 over-sampling ratio */
+            TEMP_SAMPLING_256 = 0x40, 
+            /** 512 over-sampling ratio */
             TEMP_SAMPLING_512 = 0x42,
+            /** 1024 over-sampling ratio */
             TEMP_SAMPLING_1024 = 0x44,
+            /** 2048 over-sampling ratio */
             TEMP_SAMPLING_2048 = 0x46,
+            /** 4096 over-sampling ratio */
             TEMP_SAMPLING_4096 = 0x48
         };
 
         /* Over Sampling Ratio for D2 (Pressure) */
         enum PRESSURE_SAMPLING_RATES{
+            /** 256 over-sampling ratio */
             PRESSURE_SAMPLING_256 = 0x50,
+            /** 512 over-sampling ratio */
             PRESSURE_SAMPLING_512 = 0x52,
+            /** 1024 over-sampling ratio */
             PRESSURE_SAMPLING_1024 = 0x54,
+            /** 2048 over-sampling ratio */
             PRESSURE_SAMPLING_2048 = 0x56,
+            /** 4096 over-sampling ratio */
             PRESSURE_SAMPLING_4096 = 0x58
         };
 
         void MS5607Init();
         void reset();
+        void readCoefficients();
         void setSampleRateTemp(TEMP_SAMPLING_RATES sampleRate);
         void setSampleRatePressure(PRESSURE_SAMPLING_RATES sampleRate);
         uint16_t read16(uint8_t addr);
-
-        float getTemperature();
-        float getPressure();
-        void readCoefficients();
-
-        
-
-        //read prom
-        // read digital pressure and temp data
-        // calculate temperature
-        // calculate temperature and pressure
-
-
-        // sensor only has 5 commands that should be defined in public for usage
-        /*!
-        *   1. Reset
-        *   2. Read PROM
-        *   3. D1 Conversion
-        *   4. D2 Conversion
-        *   5. Read ADC result 
-        * 
-        */ 
-   
+        uint32_t getTemperature();
+        uint32_t getPressure();
 
 };
