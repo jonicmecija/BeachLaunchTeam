@@ -56,7 +56,7 @@ class MS5607{
         MS5607_calib_data MS5607_calib;        
         uint8_t osrTemp; /** Temperature over-sampling ratio */
         uint8_t osrPressure; /** Pressure over-sampling ratio */
-   
+
     public:
         
         /* Over Sampling Ratio for D1 (Temperature) */
@@ -90,9 +90,12 @@ class MS5607{
         void MS5607Init();
         void reset();
         void readCoefficients();
+        void printCoefficients();
         void setSampleRateTemp(TEMP_SAMPLING_RATES sampleRate);
         void setSampleRatePressure(PRESSURE_SAMPLING_RATES sampleRate);
-        uint16_t read16(uint8_t addr);
+        uint8_t getSampleRateTemp();
+        uint8_t getSampleRatePressure();
+        int16_t read16(uint8_t addr);
         uint32_t getTemperature();
         uint32_t getPressure();
 

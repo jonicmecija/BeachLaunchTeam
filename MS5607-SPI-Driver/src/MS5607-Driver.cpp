@@ -28,23 +28,30 @@ void MS5607::reset(){
     SPI.transfer(RESET_COMMAND);
     digitalWrite(CS_PIN,HIGH);
     SPI.endTransaction();
+
+    Serial.println("reset complete");
 }
 
 /*!
- * Reads a 16 bit value given an address.
+ * Reads a 16 bit value given an 8-bit address.
  * @param addr
  *        The address for a value to be read from.
  * @return 16-bit value.
  */
-uint16_t MS5607::read16(uint8_t addr){
-    uint16_t coeff = 0;
+int16_t MS5607::read16(uint8_t addr){
+    int64_t coeff = 0;
 
-    SPI.beginTransaction(SPISettings(SPI_RATE, MSBFIRST, SPI_MODE0));
-    digitalWrite(CS_PIN,0);
-    coeff = SPI.transfer16(addr);
-    digitalWrite(CS_PIN,1);
-    SPI.endTransaction();
+    SPI.beginTransaction(SPISettings(SPI_RATE, MSBFIRST, SPI_MODE0)); // open bus
+    digitalWrite(CS_PIN,0); // open CS low
+    SPI.transfer(addr);
 
+    coeff |= SPI.transfer(addr) << 8;    
+    coeff |= SPI.transfer(addr);     
+
+    digitalWrite(CS_PIN,1); // close CS pin
+    SPI.endTransaction(); // close spi bus
+
+    
     return coeff;
 }
 
@@ -52,13 +59,24 @@ uint16_t MS5607::read16(uint8_t addr){
  *  @brief  Reads the PROM coefficients
  */
 void MS5607::readCoefficients(){
-    reset();
     MS5607_calib.COEFF1 = read16(C1_ADDR);
     MS5607_calib.COEFF2 = read16(C2_ADDR);
     MS5607_calib.COEFF3 = read16(C3_ADDR);
     MS5607_calib.COEFF4 = read16(C4_ADDR);
     MS5607_calib.COEFF5 = read16(C5_ADDR);
     MS5607_calib.COEFF6 = read16(C6_ADDR);
+}
+
+/*!
+ *  @brief  Prints the PROM coefficients
+ */
+void MS5607::printCoefficients(){
+    Serial.println(MS5607_calib.COEFF1);
+    Serial.println(MS5607_calib.COEFF2);
+    Serial.println(MS5607_calib.COEFF3);
+    Serial.println(MS5607_calib.COEFF4);
+    Serial.println(MS5607_calib.COEFF5);
+    Serial.println(MS5607_calib.COEFF6);
 }
 
 /*!
@@ -70,6 +88,10 @@ void MS5607::setSampleRateTemp(TEMP_SAMPLING_RATES sampleRate){
     osrTemp = sampleRate;
 }
 
+uint8_t MS5607::getSampleRateTemp(){
+    return osrTemp;
+}
+
 /*!
  * Sets the sampling config for the device.
  * @param sampleRate
@@ -77,6 +99,10 @@ void MS5607::setSampleRateTemp(TEMP_SAMPLING_RATES sampleRate){
  */
 void MS5607::setSampleRatePressure(PRESSURE_SAMPLING_RATES sampleRate){
     osrPressure = sampleRate;
+}
+
+uint8_t MS5607::getSampleRatePressure(){
+    return osrPressure;
 }
 
 /*!
@@ -127,22 +153,27 @@ uint32_t MS5607::getPressure(){
     digitalWrite(CS_PIN,1);
     SPI.endTransaction();
     
+    delay(5);
     // get the ADC value for temperature 
     SPI.beginTransaction(SPISettings(SPI_RATE, MSBFIRST, SPI_MODE0));
     digitalWrite(CS_PIN,0);
 
+    // // read in 24-bit uncompensated temperature value
+    // D2_temp |= SPI.transfer(ADC_COMMAND) << 16;
+    // D2_temp |= SPI.transfer16(ADC_COMMAND);
+
     // read in 24-bit uncompensated pressure value
     D1_pressure |= SPI.transfer(ADC_COMMAND) << 16;
     D1_pressure |= SPI.transfer16(ADC_COMMAND);
-
+    
     digitalWrite(CS_PIN,1);
     SPI.endTransaction();
-
     MS5607_calib.D1 = D1_pressure;
-    
-    MS5607_calib.OFF = MS5607_calib.COEFF2 * 131072 + (MS5607_calib.COEFF4 * MS5607_calib.DT) / 64;   // question: does DT have to be calculated first?
-    MS5607_calib.SENS = MS5607_calib.COEFF1 * 65536 + (MS5607_calib.COEFF3 * MS5607_calib.DT) / 128;  // equation taken from datasheet
-    MS5607_calib.PRESSURE = (MS5607_calib.D1 * MS5607_calib.SENS/2097152 - MS5607_calib.OFF) / 32768; // equation taken from datasheet
+
+    MS5607_calib.OFF = (int64_t)MS5607_calib.COEFF2 * 131072 + ((int64_t)MS5607_calib.COEFF4 * (int64_t)MS5607_calib.DT) / 64;   // question: does DT have to be calculated first?
+    MS5607_calib.SENS = (int64_t)MS5607_calib.COEFF1 * 65536 + ((int64_t)MS5607_calib.COEFF3 * (int64_t)MS5607_calib.DT) / 128;  // equation taken from datasheet
+    MS5607_calib.PRESSURE = ((int64_t)MS5607_calib.D1 * MS5607_calib.SENS/2097152 - MS5607_calib.OFF) / 32768; // equation taken from datasheet
+
 
 
     return MS5607_calib.PRESSURE;
