@@ -158,18 +158,13 @@ uint32_t MS5607::getPressure(){
     SPI.beginTransaction(SPISettings(SPI_RATE, MSBFIRST, SPI_MODE0));
     digitalWrite(CS_PIN,0);
 
-    // // read in 24-bit uncompensated temperature value
-    // D2_temp |= SPI.transfer(ADC_COMMAND) << 16;
-    // D2_temp |= SPI.transfer16(ADC_COMMAND);
-
     // read in 24-bit uncompensated pressure value
+    SPI.transfer(ADC_COMMAND); // throw away first byte read
     D1_pressure |= SPI.transfer(ADC_COMMAND) << 16;
     D1_pressure |= SPI.transfer16(ADC_COMMAND);
-    
     digitalWrite(CS_PIN,1);
     SPI.endTransaction();
     MS5607_calib.D1 = D1_pressure;
-
     MS5607_calib.OFF = (int64_t)MS5607_calib.COEFF2 * 131072 + ((int64_t)MS5607_calib.COEFF4 * (int64_t)MS5607_calib.DT) / 64;   // question: does DT have to be calculated first?
     MS5607_calib.SENS = (int64_t)MS5607_calib.COEFF1 * 65536 + ((int64_t)MS5607_calib.COEFF3 * (int64_t)MS5607_calib.DT) / 128;  // equation taken from datasheet
     MS5607_calib.PRESSURE = ((int64_t)MS5607_calib.D1 * MS5607_calib.SENS/2097152 - MS5607_calib.OFF) / 32768; // equation taken from datasheet
